@@ -28,7 +28,8 @@
 
 local SOLOCRAFT_ENABLED     = true
 local SOLOCRAFT_ANNOUNCE    = true
-local STATS_MULT            = 100.0
+local STATS_MULT            = 100.0  -- health/mana scaling percentage
+local DAMAGE_MULT           = 100.0  -- physical damage scaling percentage
 local XP_ENABLED            = true
 local XP_BAL_ENABLED        = true
 local LEVEL_DIFF            = 10
@@ -88,6 +89,8 @@ local excluded_instances = {}
 -- CONSTANTS
 -- ============================================================
 
+local STAT_STRENGTH  = 0
+local STAT_AGILITY   = 1
 local STAT_STAMINA   = 2
 local STAT_INTELLECT = 3
 local MOD_TOTAL_PCT  = 1  -- non-zero -> TOTAL_PCT in AddPctStatModifier
@@ -106,6 +109,8 @@ local player_data = {}
 --   bonusPct      = float,  -- percentage applied (for reference)
 --   staminaBefore = float,  -- GetStat(STAT_STAMINA) captured before buff
 --   intBefore     = float,  -- GetStat(STAT_INTELLECT) captured before buff
+--   strenBefore   = float,  -- GetStat(STAT_STRENGTH) captured before buff
+--   agiBefore     = float,  -- GetStat(STAT_AGILITY) captured before buff
 --   isCaster      = bool,
 --   xp_mod        = float,
 -- }
@@ -135,27 +140,38 @@ end
 
 -- Apply a percentage buff. apply=true always works in this Eluna build.
 -- Removal uses the mathematical inverse so apply=false is never needed:
---   inversePct = (staminaBefore / staminaNow - 1) * 100
+--   inversePct = (statBefore / statNow - 1) * 100
 -- This brings the accumulator exactly back to its pre-buff value.
-local function ApplyStatBuff(player, bonusPct)
-    player:AddPctStatModifier(STAT_STAMINA, MOD_TOTAL_PCT, bonusPct, true)
+--
+-- Health/mana scaling uses STATS_MULT (Stamina + Intellect).
+-- Physical damage scaling uses DAMAGE_MULT (Strength + Agility).
+-- The two multipliers are independent so they can be tuned separately.
+-- Note: buffing Agility also increases dodge chance, crit chance, and
+-- armor. Buffing Strength increases block value for Warrior/Paladin.
+-- These are unavoidable side effects of the vanilla stat pipeline.
+local function ApplyStatBuff(player, statMult, dmgMult)
+    player:AddPctStatModifier(STAT_STAMINA,   MOD_TOTAL_PCT, statMult, true)
+    player:AddPctStatModifier(STAT_STRENGTH,  MOD_TOTAL_PCT, dmgMult,  true)
+    player:AddPctStatModifier(STAT_AGILITY,   MOD_TOTAL_PCT, dmgMult,  true)
     if player:GetPowerType() == POWER_MANA then
-        player:AddPctStatModifier(STAT_INTELLECT, MOD_TOTAL_PCT, bonusPct, true)
+        player:AddPctStatModifier(STAT_INTELLECT, MOD_TOTAL_PCT, statMult, true)
     end
 end
 
 local function RemoveStatBuff(player, data)
-    local stamNow = player:GetStat(STAT_STAMINA)
-    if data.staminaBefore and data.staminaBefore > 0 and stamNow > data.staminaBefore then
-        local inv = (data.staminaBefore / stamNow - 1.0) * 100.0
-        player:AddPctStatModifier(STAT_STAMINA, MOD_TOTAL_PCT, inv, true)
-    end
-    if data.isCaster then
-        local intNow = player:GetStat(STAT_INTELLECT)
-        if data.intBefore and data.intBefore > 0 and intNow > data.intBefore then
-            local inv = (data.intBefore / intNow - 1.0) * 100.0
-            player:AddPctStatModifier(STAT_INTELLECT, MOD_TOTAL_PCT, inv, true)
+    local function removeOne(stat, before)
+        if not before or before <= 0 then return end
+        local now = player:GetStat(stat)
+        if now > before then
+            local inv = (before / now - 1.0) * 100.0
+            player:AddPctStatModifier(stat, MOD_TOTAL_PCT, inv, true)
         end
+    end
+    removeOne(STAT_STAMINA,   data.staminaBefore)
+    removeOne(STAT_STRENGTH,  data.strenBefore)
+    removeOne(STAT_AGILITY,   data.agiBefore)
+    if data.isCaster then
+        removeOne(STAT_INTELLECT, data.intBefore)
     end
 end
 
@@ -206,9 +222,12 @@ local function OnMapChange(event, player)
     local isCaster      = (player:GetPowerType() == POWER_MANA)
     local staminaBefore = player:GetStat(STAT_STAMINA)
     local intBefore     = isCaster and player:GetStat(STAT_INTELLECT) or 0
+    local strenBefore   = player:GetStat(STAT_STRENGTH)
+    local agiBefore     = player:GetStat(STAT_AGILITY)
 
-    local bonusPct = (effectiveMult - 1.0) * STATS_MULT
-    ApplyStatBuff(player, bonusPct)
+    local statMult = (effectiveMult - 1.0) * STATS_MULT
+    local dmgMult  = (effectiveMult - 1.0) * DAMAGE_MULT
+    ApplyStatBuff(player, statMult, dmgMult)
 
     local xp_mod = 1.0
     if XP_BAL_ENABLED then
@@ -220,9 +239,10 @@ local function OnMapChange(event, player)
     if not XP_ENABLED then xp_mod = 0 end
 
     player_data[guid] = {
-        bonusPct      = bonusPct,
         staminaBefore = staminaBefore,
         intBefore     = intBefore,
+        strenBefore   = strenBefore,
+        agiBefore     = agiBefore,
         isCaster      = isCaster,
         xp_mod        = xp_mod,
     }
