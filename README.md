@@ -9,7 +9,7 @@ A Lua/Eluna port of the [AzerothCore mod-solocraft](https://github.com/azerothco
 When a player enters a dungeon or raid instance, their Stamina (and Intellect for caster classes) are scaled up as if they had a full group. When they leave, the scaling is removed. This makes vanilla dungeons and raids soloable without requiring custom content or balance changes.
 
 - **Health scaling** — Stamina is multiplied based on the dungeon's expected group size divided by the current number of players in the group. A solo player in a 5-man dungeon receives 5x Stamina; a duo receives 2.5x; a full group of five receives no buff.
-- **Damage scaling** — Strength and Agility are multiplied based on the dungeon's expected group size divided by the current number of players in the group.
+- **Physical damage scaling** — Strength and Agility are scaled to increase melee damage, ranged damage, and attack power proportionally.
 - **Mana scaling** — Intellect is scaled by the same factor for mana-using classes, providing proportional mana pool increases. This also grants a minor spell crit bonus as a side effect of the vanilla stat pipeline.
 - **XP balancing** — XP gained from kills is reduced proportionally to the stat buff applied, so that a heavily buffed solo player does not trivially out-level content.
 - **Group awareness** — The buff scales dynamically with how many players are currently in your group at the time of dungeon entry. Re-entering after a group change will apply the correct buff for the new group size.
@@ -57,6 +57,7 @@ All options are at the top of `solocraft.lua`:
 | `XP_ENABLED` | `true` | Allow XP gain inside instances |
 | `XP_BAL_ENABLED` | `true` | Reduce XP proportional to buff strength |
 | `LEVEL_DIFF` | `10` | Max levels above dungeon level to still receive buff |
+| `DAMAGE_MULT` | `100.0` | Physical damage scaling percentage (Strength + Agility), independent from health/mana scaling |
 
 ### Per-class balance
 
