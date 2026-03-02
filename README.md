@@ -6,7 +6,7 @@ A Lua/Eluna port of the [AzerothCore mod-solocraft](https://github.com/azerothco
 
 ## What it does
 
-When a player enters a dungeon or raid instance, their Stamina (and Intellect for caster classes) are scaled up as if they had a full group. When they leave, the scaling is removed. This makes vanilla dungeons and raids soloable without requiring custom content or balance changes.
+When a player enters a dungeon or raid instance, their base stats are scaled up as if they had a full group. When they leave, the scaling is removed. This makes vanilla dungeons and raids soloable without requiring custom content or balance changes.
 
 - **Health scaling** — Stamina is multiplied based on the dungeon's expected group size divided by the current number of players in the group. A solo player in a 5-man dungeon receives 5x Stamina; a duo receives 2.5x; a full group of five receives no buff.
 - **Physical damage scaling** — Strength and Agility are scaled to increase melee damage, ranged damage, and attack power proportionally.
@@ -23,7 +23,7 @@ When a player enters a dungeon or raid instance, their Stamina (and Intellect fo
 
 - **No spell power scaling.** Vanilla tracks spell damage per school with no unified spell power stat. There is no Lua API in this Eluna build to modify per-school damage bonuses without a custom DB spell aura or core patch.
 - **No buff icon.** Stat changes are applied directly through the engine's modifier pipeline and are not visible as a buff on the player's unit frame. The stat sheet (`C`) will show the increased values.
-- **No group offset tracking.** The original AzerothCore version debuffs players who join a dungeon where another player already holds the full difficulty offset. This port does not implement that logic. All group members are scaled equally by `difficulty / groupSize`.
+- **No group offset tracking.** The original AzerothCore version debuffs players who join a dungeon where another player already holds the full difficulty offset. This port does not implement that logic. All group members are scaled equally by difficulty and group size.
 
 ---
 
